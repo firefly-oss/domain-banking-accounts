@@ -1,0 +1,993 @@
+openapi: 3.0.1
+info:
+  title: OpenAPI definition
+  version: v0
+servers:
+- url: http://localhost:18080
+  description: Generated server url
+tags:
+- name: Account Holders
+  description: Manage account holders and their roles
+- name: Accounts
+  description: "Account lifecycle management - open, close, and query accounts"
+- name: Account Spaces
+  description: Manage account spaces (buckets) for organizing funds
+- name: Account Restrictions
+  description: Manage account restrictions like blocks and holds
+- name: Account Backoffice
+  description: Administrative operations for account management
+paths:
+  /api/v1/accounts:
+    post:
+      tags:
+      - Accounts
+      summary: Open a new account
+      description: "Opens a new bank account with contract, party, balance, and space\
+        \ setup"
+      operationId: openAccount
+      parameters:
+      - name: X-Idempotency-Key
+        in: header
+        description: "Unique key for idempotent requests. If provided, ensures that\
+          \ identical requests with the same key will only be processed once."
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OpenAccountCommand"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/OpenAccountResponse"
+  /api/v1/accounts/{accountId}/spaces:
+    post:
+      tags:
+      - Account Spaces
+      summary: Create an account space
+      description: Creates a new space (bucket) within an account for organizing funds
+      operationId: createSpace
+      parameters:
+      - name: accountId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-Idempotency-Key
+        in: header
+        description: "Unique key for idempotent requests. If provided, ensures that\
+          \ identical requests with the same key will only be processed once."
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAccountSpaceCommand"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ConfigureSpaceResponse"
+  /api/v1/accounts/{accountId}/restrictions:
+    post:
+      tags:
+      - Account Restrictions
+      summary: Apply a restriction
+      description: "Applies a restriction (block, hold, freeze) to an account"
+      operationId: applyRestriction
+      parameters:
+      - name: accountId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-Idempotency-Key
+        in: header
+        description: "Unique key for idempotent requests. If provided, ensures that\
+          \ identical requests with the same key will only be processed once."
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApplyRestrictionCommand"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApplyRestrictionResponse"
+  /api/v1/accounts/{accountId}/holders:
+    post:
+      tags:
+      - Account Holders
+      summary: Add an account holder
+      description: Adds a party as a holder to an existing account contract
+      operationId: addHolder
+      parameters:
+      - name: accountId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-Idempotency-Key
+        in: header
+        description: "Unique key for idempotent requests. If provided, ensures that\
+          \ identical requests with the same key will only be processed once."
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddAccountHolderCommand"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AddHolderResponse"
+  /api/v1/accounts/{accountId}/close:
+    post:
+      tags:
+      - Accounts
+      summary: Close an account
+      description: Initiates the account closure process
+      operationId: closeAccount
+      parameters:
+      - name: accountId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: reason
+        in: query
+        required: false
+        schema:
+          type: string
+          default: Customer requested closure
+      - name: X-Idempotency-Key
+        in: header
+        description: "Unique key for idempotent requests. If provided, ensures that\
+          \ identical requests with the same key will only be processed once."
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+  /api/v1/backoffice/accounts/{accountId}:
+    get:
+      tags:
+      - Account Backoffice
+      summary: Get account details
+      description: Retrieves full account information for backoffice review
+      operationId: getAccount
+      parameters:
+      - name: accountId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-Idempotency-Key
+        in: header
+        description: "Unique key for idempotent requests. If provided, ensures that\
+          \ identical requests with the same key will only be processed once."
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AccountDTO"
+  /api/v1/backoffice/accounts/{accountId}/status-history:
+    get:
+      tags:
+      - Account Backoffice
+      summary: Get status history
+      description: Retrieves account status change history
+      operationId: getAccountStatusHistory
+      parameters:
+      - name: accountId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-Idempotency-Key
+        in: header
+        description: "Unique key for idempotent requests. If provided, ensures that\
+          \ identical requests with the same key will only be processed once."
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PaginationResponse"
+  /api/v1/backoffice/accounts/{accountId}/spaces:
+    get:
+      tags:
+      - Account Backoffice
+      summary: Get account spaces
+      description: Retrieves all spaces (sub-accounts) for the account
+      operationId: getAccountSpaces
+      parameters:
+      - name: accountId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-Idempotency-Key
+        in: header
+        description: "Unique key for idempotent requests. If provided, ensures that\
+          \ identical requests with the same key will only be processed once."
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PaginationResponseAccountSpaceDTO"
+  /api/v1/backoffice/accounts/{accountId}/restrictions:
+    get:
+      tags:
+      - Account Backoffice
+      summary: Get active restrictions
+      description: Retrieves active restrictions on the account
+      operationId: getAccountRestrictions
+      parameters:
+      - name: accountId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-Idempotency-Key
+        in: header
+        description: "Unique key for idempotent requests. If provided, ensures that\
+          \ identical requests with the same key will only be processed once."
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AccountRestrictionDTO"
+  /api/v1/backoffice/accounts/{accountId}/restrictions/history:
+    get:
+      tags:
+      - Account Backoffice
+      summary: Get restrictions history
+      description: Retrieves all restrictions including historical
+      operationId: getAccountRestrictionsHistory
+      parameters:
+      - name: accountId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-Idempotency-Key
+        in: header
+        description: "Unique key for idempotent requests. If provided, ensures that\
+          \ identical requests with the same key will only be processed once."
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AccountRestrictionDTO"
+  /api/v1/backoffice/accounts/{accountId}/parameters:
+    get:
+      tags:
+      - Account Backoffice
+      summary: Get account parameters
+      description: Retrieves account configuration parameters
+      operationId: getAccountParameters
+      parameters:
+      - name: accountId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-Idempotency-Key
+        in: header
+        description: "Unique key for idempotent requests. If provided, ensures that\
+          \ identical requests with the same key will only be processed once."
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PaginationResponse"
+  /api/v1/backoffice/accounts/{accountId}/holders:
+    get:
+      tags:
+      - Account Backoffice
+      summary: Get account holders
+      description: Retrieves all holders associated with the account
+      operationId: getAccountHolders
+      parameters:
+      - name: accountId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-Idempotency-Key
+        in: header
+        description: "Unique key for idempotent requests. If provided, ensures that\
+          \ identical requests with the same key will only be processed once."
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PaginationResponse"
+  /api/v1/backoffice/accounts/{accountId}/balance:
+    get:
+      tags:
+      - Account Backoffice
+      summary: Get account balances
+      description: Retrieves current account balances
+      operationId: getAccountBalances
+      parameters:
+      - name: accountId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-Idempotency-Key
+        in: header
+        description: "Unique key for idempotent requests. If provided, ensures that\
+          \ identical requests with the same key will only be processed once."
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PaginationResponse"
+  /api/v1/backoffice/accounts/{accountId}/restrictions/{restrictionId}:
+    delete:
+      tags:
+      - Account Backoffice
+      summary: Remove restriction
+      description: Removes a restriction from the account
+      operationId: removeRestriction
+      parameters:
+      - name: accountId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: restrictionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-Idempotency-Key
+        in: header
+        description: "Unique key for idempotent requests. If provided, ensures that\
+          \ identical requests with the same key will only be processed once."
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+  /api/v1/accounts/{accountId}/restrictions/{restrictionId}:
+    delete:
+      tags:
+      - Account Restrictions
+      summary: Remove a restriction
+      description: Removes an existing restriction from an account
+      operationId: removeRestriction_1
+      parameters:
+      - name: accountId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: restrictionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-Idempotency-Key
+        in: header
+        description: "Unique key for idempotent requests. If provided, ensures that\
+          \ identical requests with the same key will only be processed once."
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+components:
+  schemas:
+    AccountParameter:
+      type: object
+      properties:
+        parameterType:
+          type: string
+        parameterValue:
+          type: string
+        numericValue:
+          type: number
+    OpenAccountCommand:
+      type: object
+      properties:
+        partyId:
+          type: string
+          format: uuid
+        productId:
+          type: string
+          format: uuid
+        productCatalogId:
+          type: string
+          format: uuid
+        roleInContractId:
+          type: string
+          format: uuid
+        accountType:
+          type: string
+        currency:
+          type: string
+        branchId:
+          type: string
+          format: uuid
+        defaultParameters:
+          type: array
+          items:
+            $ref: "#/components/schemas/AccountParameter"
+    OpenAccountResponse:
+      type: object
+      properties:
+        accountId:
+          type: string
+          description: The unique identifier of the created account
+          format: uuid
+        contractId:
+          type: string
+          description: The unique identifier of the associated contract
+          format: uuid
+        executionId:
+          type: string
+          description: The execution ID of the saga that opened the account
+        status:
+          type: string
+          description: The status of the saga execution
+      description: Response after opening an account
+    AutoTransferRules:
+      type: object
+      properties:
+        sourceSpaceId:
+          type: string
+          format: uuid
+        frequency:
+          type: string
+        amount:
+          type: number
+    CreateAccountSpaceCommand:
+      type: object
+      properties:
+        accountId:
+          type: string
+          format: uuid
+        spaceType:
+          type: string
+        name:
+          type: string
+        targetAmount:
+          type: number
+        targetDate:
+          type: string
+          format: date
+        autoTransferRules:
+          $ref: "#/components/schemas/AutoTransferRules"
+    ConfigureSpaceResponse:
+      type: object
+      properties:
+        spaceId:
+          type: string
+          description: The unique identifier of the created space
+          format: uuid
+        executionId:
+          type: string
+          description: The execution ID of the saga
+        status:
+          type: string
+          description: The status of the saga execution
+      description: Response after configuring an account space
+    ApplyRestrictionCommand:
+      type: object
+      properties:
+        accountId:
+          type: string
+          format: uuid
+        restrictionType:
+          type: string
+        reason:
+          type: string
+        restrictedAmount:
+          type: number
+        referenceNumber:
+          type: string
+        startDate:
+          type: string
+          format: date-time
+        endDateTime:
+          type: string
+          format: date-time
+    ApplyRestrictionResponse:
+      type: object
+      properties:
+        restrictionId:
+          type: string
+          description: The unique identifier of the restriction
+          format: uuid
+        executionId:
+          type: string
+          description: The execution ID of the saga
+        status:
+          type: string
+          description: The status of the saga execution
+      description: Response after applying an account restriction
+    AddAccountHolderCommand:
+      type: object
+      properties:
+        accountId:
+          type: string
+          format: uuid
+        partyId:
+          type: string
+          format: uuid
+        roleInContractId:
+          type: string
+          format: uuid
+    AddHolderResponse:
+      type: object
+      properties:
+        contractPartyId:
+          type: string
+          description: The unique identifier of the contract-party link
+          format: uuid
+        executionId:
+          type: string
+          description: The execution ID of the saga
+        status:
+          type: string
+          description: The status of the saga execution
+      description: Response after adding an account holder
+    AccountDTO:
+      required:
+      - accountNumber
+      - accountStatus
+      - accountType
+      - branchId
+      - contractId
+      - currency
+      - openDate
+      type: object
+      properties:
+        dateCreated:
+          type: string
+          format: date-time
+        dateUpdated:
+          type: string
+          format: date-time
+        accountId:
+          type: string
+          format: uuid
+        contractId:
+          type: string
+          format: uuid
+        accountNumber:
+          type: string
+        accountType:
+          type: string
+          enum:
+          - CHECKING
+          - SAVINGS
+          - TERM_DEPOSIT
+          - LOAN
+          - CREDIT_CARD
+          - INVESTMENT
+          - MORTGAGE
+          - BUSINESS_CHECKING
+          - BUSINESS_SAVINGS
+          - FOREIGN_CURRENCY
+          - PREMIUM
+          - YOUTH
+          - SENIOR
+          - PENSION
+          - GOVERNMENT_BENEFITS
+          - CRYPTO_WALLET
+          - TOKENIZED_ASSET
+          - DIGITAL_ASSET
+          - STABLECOIN
+          - NFT_COLLECTION
+        currency:
+          type: string
+        openDate:
+          type: string
+          format: date
+        closeDate:
+          type: string
+          format: date
+        accountStatus:
+          type: string
+          enum:
+          - OPEN
+          - CLOSED
+          - SUSPENDED
+          - DORMANT
+        branchId:
+          type: string
+          format: uuid
+        description:
+          type: string
+        accountSubType:
+          type: string
+          enum:
+          - STANDARD_CHECKING
+          - INTEREST_CHECKING
+          - REWARDS_CHECKING
+          - FREE_CHECKING
+          - PREMIUM_CHECKING
+          - STANDARD_SAVINGS
+          - HIGH_YIELD_SAVINGS
+          - MONEY_MARKET
+          - CERTIFICATE_OF_DEPOSIT
+          - IRA
+          - FIXED_TERM_DEPOSIT
+          - VARIABLE_TERM_DEPOSIT
+          - PERSONAL_LOAN
+          - AUTO_LOAN
+          - HELOC
+          - STANDARD_CREDIT_CARD
+          - REWARDS_CREDIT_CARD
+          - CASHBACK_CREDIT_CARD
+          - TRAVEL_CREDIT_CARD
+          - BUSINESS_CREDIT_CARD
+          - FIXED_RATE_MORTGAGE
+          - ADJUSTABLE_RATE_MORTGAGE
+          - INTEREST_ONLY_MORTGAGE
+          - STANDARD_BUSINESS_CHECKING
+          - PREMIUM_BUSINESS_CHECKING
+          - STANDARD_BUSINESS_SAVINGS
+          - PREMIUM_BUSINESS_SAVINGS
+          - MULTI_CURRENCY
+          - SINGLE_CURRENCY_FOREIGN
+          - RELATIONSHIP_PREMIUM
+          - WEALTH_MANAGEMENT
+          - YOUTH_SAVINGS
+          - STUDENT_CHECKING
+          - SENIOR_CHECKING
+          - SENIOR_SAVINGS
+          - PENSION_DISTRIBUTION
+          - SOCIAL_SECURITY_BENEFITS
+          - GOVERNMENT_ASSISTANCE
+        taxReportingStatus:
+          type: string
+          enum:
+          - REPORTABLE
+          - EXEMPT
+          - BACKUP_WITHHOLDING
+          - FATCA_REPORTABLE
+          - CRS_REPORTABLE
+          - FATCA_CRS_REPORTABLE
+          - PENDING_DOCUMENTATION
+          - INCOMPLETE_INFORMATION
+          - NON_REPORTABLE
+        regulatoryStatus:
+          type: string
+          enum:
+          - COMPLIANT
+          - PENDING_DOCUMENTATION
+          - ENHANCED_DUE_DILIGENCE
+          - UNDER_REVIEW
+          - SPECIAL_MONITORING
+          - SANCTIONS_SCREENING
+          - PEP_MONITORING
+          - HIGH_RISK_MONITORING
+          - REGULATORY_EXEMPTION
+          - NON_COMPLIANT
+          - REGULATORY_RESTRICTED
+        maturityDate:
+          type: string
+          format: date
+        interestAccrualMethod:
+          type: string
+          enum:
+          - SIMPLE
+          - DAILY_COMPOUND
+          - MONTHLY_COMPOUND
+          - QUARTERLY_COMPOUND
+          - SEMI_ANNUAL_COMPOUND
+          - ANNUAL_COMPOUND
+          - CONTINUOUS_COMPOUND
+          - DAILY_AVERAGE_BALANCE
+          - MONTHLY_AVERAGE_BALANCE
+          - MINIMUM_BALANCE
+          - TIERED_RATE
+          - STEPPED_RATE
+          - DAY_COUNT_30_360
+          - DAY_COUNT_ACTUAL_360
+          - DAY_COUNT_ACTUAL_365
+          - DAY_COUNT_ACTUAL_ACTUAL
+        interestPaymentFrequency:
+          type: string
+          enum:
+          - DAILY
+          - WEEKLY
+          - BI_WEEKLY
+          - MONTHLY
+          - QUARTERLY
+          - SEMI_ANNUALLY
+          - ANNUALLY
+          - AT_MATURITY
+          - AT_CLOSURE
+          - SPECIFIC_DAY_OF_MONTH
+          - SPECIFIC_DATE
+          - NONE
+        minimumBalance:
+          type: number
+        overdraftLimit:
+          type: number
+        walletAddress:
+          type: string
+        blockchainNetwork:
+          type: string
+        tokenContractAddress:
+          type: string
+        tokenStandard:
+          type: string
+        isCustodial:
+          type: boolean
+    PaginationResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            type: object
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+        currentPage:
+          type: integer
+          format: int32
+    AccountSpaceDTO:
+      required:
+      - accountId
+      - balance
+      - spaceName
+      - spaceType
+      type: object
+      properties:
+        dateCreated:
+          type: string
+          format: date-time
+        dateUpdated:
+          type: string
+          format: date-time
+        accountSpaceId:
+          type: string
+          format: uuid
+        accountId:
+          type: string
+          format: uuid
+        spaceName:
+          type: string
+        spaceType:
+          type: string
+          enum:
+          - MAIN
+          - SAVINGS
+          - VACATION
+          - EMERGENCY
+          - GOALS
+          - CUSTOM
+        balance:
+          type: number
+        targetAmount:
+          type: number
+        targetDate:
+          type: string
+          format: date-time
+        iconId:
+          type: string
+        colorCode:
+          type: string
+        description:
+          type: string
+        isVisible:
+          type: boolean
+        goalProgressPercentage:
+          type: number
+        remainingToTarget:
+          type: number
+        estimatedCompletionDate:
+          type: string
+          format: date-time
+        isGoalCompleted:
+          type: boolean
+        enableAutomaticTransfers:
+          type: boolean
+        transferFrequency:
+          type: string
+          enum:
+          - DAILY
+          - WEEKLY
+          - MONTHLY
+          - QUARTERLY
+          - ANNUALLY
+        transferAmount:
+          type: number
+        sourceSpaceId:
+          type: string
+          format: uuid
+        averageGrowthRate:
+          type: number
+        contributionToAccountTotal:
+          type: number
+        isFrozen:
+          type: boolean
+        frozenDateTime:
+          type: string
+          format: date-time
+        unfrozenDateTime:
+          type: string
+          format: date-time
+        lastBalanceUpdateReason:
+          type: string
+        lastBalanceUpdateDateTime:
+          type: string
+          format: date-time
+    PaginationResponseAccountSpaceDTO:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/AccountSpaceDTO"
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+        currentPage:
+          type: integer
+          format: int32
+    AccountRestrictionDTO:
+      required:
+      - accountId
+      - appliedBy
+      - reason
+      - restrictionType
+      - startDateTime
+      type: object
+      properties:
+        dateCreated:
+          type: string
+          format: date-time
+        dateUpdated:
+          type: string
+          format: date-time
+        accountRestrictionId:
+          type: string
+          format: uuid
+        accountId:
+          type: string
+          format: uuid
+        restrictionType:
+          type: string
+          enum:
+          - WITHDRAWAL_HOLD
+          - DEPOSIT_HOLD
+          - ACCOUNT_FREEZE
+          - LEGAL_ORDER
+          - COURT_ORDER
+          - FRAUD_INVESTIGATION
+          - DECEASED_HOLDER
+          - DORMANCY
+          - NEGATIVE_BALANCE
+          - EXCESSIVE_OVERDRAFTS
+          - SUSPICIOUS_ACTIVITY
+          - AML_INVESTIGATION
+          - INTERNATIONAL_TRANSFER_RESTRICTION
+          - HIGH_VALUE_TRANSACTION_RESTRICTION
+          - PENDING_DOCUMENTATION
+          - EXPIRED_IDENTIFICATION
+          - BANKRUPTCY
+          - ESTATE_SETTLEMENT
+          - REGULATORY_COMPLIANCE
+          - SANCTIONS_SCREENING
+          - TRANSACTION_TYPE_RESTRICTION
+          - CHANNEL_RESTRICTION
+          - GEOGRAPHIC_RESTRICTION
+          - CLOSURE_IN_PROGRESS
+        startDateTime:
+          type: string
+          format: date-time
+        endDateTime:
+          type: string
+          format: date-time
+        restrictedAmount:
+          type: number
+        referenceNumber:
+          type: string
+        reason:
+          type: string
+        appliedBy:
+          type: string
+        removedBy:
+          type: string
+        notes:
+          type: string
+        isActive:
+          type: boolean
