@@ -18,6 +18,15 @@ public class CreateAccountSpaceCommand implements Command<UUID> {
     private LocalDate targetDate;
     private AutoTransferRules autoTransferRules;
 
+    /** Currency of the parent account — used on the ledger legs for the space init transfer. */
+    private String currency;
+
+    /** Optional seed amount to move into the new space from {@link #sourceSpaceId}. */
+    private BigDecimal initialAmount;
+
+    /** Space to debit when seeding the new space — required when {@link #initialAmount} is non-zero. */
+    private UUID sourceSpaceId;
+
     @Data
     @Builder
     public static class AutoTransferRules {

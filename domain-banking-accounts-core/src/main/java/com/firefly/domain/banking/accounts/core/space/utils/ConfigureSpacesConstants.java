@@ -14,16 +14,22 @@ public final class ConfigureSpacesConstants {
 
     // ============================== COMPENSATE METHODS ==============================
     public static final String COMPENSATE_DELETE_SPACE = "deleteSpace";
-    public static final String COMPENSATE_DELETE_BALANCE = "deleteBalance";
+    public static final String COMPENSATE_REVERSE_SPACE_INIT = "reverseSpaceInit";
     public static final String COMPENSATE_REMOVE_AUTO_TRANSFER = "removeAutoTransferConfig";
 
     // ============================== EVENT TYPES ==============================
     public static final String EVENT_SPACE_CREATED = "account.space.created";
-    public static final String EVENT_BALANCE_INITIALIZED = "account.space.balance.initialized";
+    public static final String EVENT_SPACE_INIT_POSTED = "account.space.init.posted";
     public static final String EVENT_AUTO_TRANSFER_CONFIGURED = "account.space.autotransfer.configured";
 
     // ============================== CONTEXT VARIABLES ==============================
-    public static final String CTX_SPACE_ID = "spaceId";
-    public static final String CTX_BALANCE_ID = "balanceId";
     public static final String CTX_ACCOUNT_ID = "accountId";
+    public static final String CTX_SPACE_ID = "spaceId";
+    public static final String CTX_SOURCE_SPACE_ID = "sourceSpaceId";
+    public static final String CTX_ACCOUNT_CURRENCY = "accountCurrency";
+    public static final String CTX_INITIAL_AMOUNT = "initialAmount";
+    public static final String CTX_SPACE_INIT_TX_ID = "spaceInitTransactionId";
+
+    // ============================== SENTINEL RESULTS ==============================
+    public static final String RESULT_SKIPPED = "skipped";
 }

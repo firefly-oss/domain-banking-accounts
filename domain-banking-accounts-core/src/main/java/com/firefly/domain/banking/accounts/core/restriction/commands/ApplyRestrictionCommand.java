@@ -18,4 +18,7 @@ public class ApplyRestrictionCommand implements Command<UUID> {
     private String referenceNumber;
     private LocalDateTime startDate;
     private LocalDateTime endDateTime;
+
+    /** Currency of the parent account — required for ledger legs when placing a monetary hold. */
+    private String currency;
 }

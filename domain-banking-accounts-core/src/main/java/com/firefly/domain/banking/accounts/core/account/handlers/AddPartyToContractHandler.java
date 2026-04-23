@@ -23,6 +23,7 @@ public class AddPartyToContractHandler extends CommandHandler<AddPartyToContract
     @Override
     protected Mono<UUID> doHandle(AddPartyToContractCommand cmd) {
         ContractPartyDTO partyDTO = new ContractPartyDTO();
+        partyDTO.setContractId(cmd.getContractId());
         partyDTO.setPartyId(cmd.getPartyId());
         partyDTO.setRoleInContractId(cmd.getRoleInContractId());
         partyDTO.setDateJoined(LocalDateTime.now());

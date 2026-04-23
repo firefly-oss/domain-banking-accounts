@@ -3,31 +3,31 @@ package com.firefly.domain.banking.accounts.core.restriction.services.impl;
 import com.firefly.domain.banking.accounts.core.restriction.commands.ApplyRestrictionCommand;
 import com.firefly.domain.banking.accounts.core.restriction.commands.RemoveRestrictionCommand;
 import com.firefly.domain.banking.accounts.core.restriction.services.AccountRestrictionService;
-import org.fireflyframework.cqrs.command.CommandBus;
 import org.fireflyframework.orchestration.saga.engine.SagaEngine;
 import org.fireflyframework.orchestration.saga.engine.SagaResult;
 import org.fireflyframework.orchestration.saga.engine.StepInputs;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
-import static com.firefly.domain.banking.accounts.core.restriction.utils.ApplyRestrictionConstants.*;
+import static com.firefly.domain.banking.accounts.core.restriction.utils.ApplyRestrictionConstants.SAGA_APPLY_RESTRICTION_NAME;
+import static com.firefly.domain.banking.accounts.core.restriction.utils.ApplyRestrictionConstants.STEP_CREATE_RESTRICTION;
+import static com.firefly.domain.banking.accounts.core.restriction.utils.ApplyRestrictionConstants.STEP_NOTIFY;
+import static com.firefly.domain.banking.accounts.core.restriction.utils.RemoveRestrictionConstants.SAGA_REMOVE_RESTRICTION_NAME;
+import static com.firefly.domain.banking.accounts.core.restriction.utils.RemoveRestrictionConstants.STEP_MARK_RESTRICTION_INACTIVE;
 
 @Service
 public class AccountRestrictionServiceImpl implements AccountRestrictionService {
 
     private final SagaEngine engine;
-    private final CommandBus commandBus;
 
-    public AccountRestrictionServiceImpl(SagaEngine engine, CommandBus commandBus) {
+    public AccountRestrictionServiceImpl(SagaEngine engine) {
         this.engine = engine;
-        this.commandBus = commandBus;
     }
 
     @Override
     public Mono<SagaResult> applyRestriction(ApplyRestrictionCommand command) {
         StepInputs inputs = StepInputs.builder()
                 .forStepId(STEP_CREATE_RESTRICTION, command)
-                .forStepId(STEP_UPDATE_STATUS, command)
                 .forStepId(STEP_NOTIFY, command)
                 .build();
 
@@ -36,6 +36,10 @@ public class AccountRestrictionServiceImpl implements AccountRestrictionService 
 
     @Override
     public Mono<Void> removeRestriction(RemoveRestrictionCommand command) {
-        return commandBus.send(command);
+        StepInputs inputs = StepInputs.builder()
+                .forStepId(STEP_MARK_RESTRICTION_INACTIVE, command)
+                .build();
+
+        return engine.execute(SAGA_REMOVE_RESTRICTION_NAME, inputs).then();
     }
 }

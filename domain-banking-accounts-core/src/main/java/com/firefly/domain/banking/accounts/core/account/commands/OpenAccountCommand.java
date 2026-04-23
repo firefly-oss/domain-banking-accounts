@@ -19,6 +19,7 @@ public class OpenAccountCommand implements Command<UUID> {
     private String accountType;
     private String currency;
     private UUID branchId;
+    private BigDecimal initialAmount;
     private List<AccountParameter> defaultParameters;
 
     @Data
@@ -51,11 +52,9 @@ public class OpenAccountCommand implements Command<UUID> {
                 .build();
     }
 
-    public InitializeBalanceCommand toBalanceCommand() {
-        return InitializeBalanceCommand.builder()
-                .balanceType("CURRENT")
-                .initialAmount(BigDecimal.ZERO)
-                .currency(currency)
+    public PostOpeningLedgerInput toOpeningLedgerInput() {
+        return PostOpeningLedgerInput.builder()
+                .initialAmount(initialAmount)
                 .build();
     }
 

@@ -28,7 +28,8 @@ public class AddAccountHolderSaga {
     @SagaStep(id = STEP_GET_CONTRACT)
     @StepEvent(type = EVENT_CONTRACT_RETRIEVED)
     public Mono<UUID> getAccountContract(GetAccountContractCommand cmd, ExecutionContext ctx) {
-        ctx.putVariable(CTX_ACCOUNT_ID, cmd.getAccountId());
+        // ExecutionContext.variables is a ConcurrentHashMap — guard against null value NPE.
+        if (cmd.getAccountId() != null) ctx.putVariable(CTX_ACCOUNT_ID, cmd.getAccountId());
         return commandBus.<UUID>send(cmd)
                 .doOnNext(contractId -> ctx.putVariable(CTX_CONTRACT_ID, contractId));
     }
@@ -52,8 +53,9 @@ public class AddAccountHolderSaga {
 
     @SagaStep(id = STEP_RECORD_ACTIVITY, dependsOn = STEP_ADD_PARTY)
     @StepEvent(type = EVENT_ACTIVITY_RECORDED)
-    public Mono<Void> recordActivity(ExecutionContext ctx) {
-        // No compensation - notification is informational
-        return Mono.empty();
+    public Mono<String> recordActivity(ExecutionContext ctx) {
+        // No compensation - notification is informational.
+        // Must emit exactly one element to satisfy @SagaStep contract (Mono.empty() = FAILURE).
+        return Mono.just("skipped");
     }
 }

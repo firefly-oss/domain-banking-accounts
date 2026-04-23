@@ -7,6 +7,7 @@ import org.fireflyframework.cqrs.command.CommandHandler;
 import org.fireflyframework.cqrs.annotations.CommandHandlerComponent;
 import reactor.core.publisher.Mono;
 
+import java.time.LocalDate;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -26,6 +27,12 @@ public class CreateAccountHandler extends CommandHandler<CreateAccountCommand, U
         accountDTO.setAccountType(AccountDTO.AccountTypeEnum.fromValue(cmd.getAccountType()));
         accountDTO.setCurrency(cmd.getCurrency());
         accountDTO.setBranchId(cmd.getBranchId());
+        // core-banking-accounts has NOT NULL constraints on account_number, open_date and
+        // account_status. Populate them here until the core exposes dedicated allocators /
+        // defaults; without this every createAccount fails with 500 at the DB layer.
+        accountDTO.setAccountNumber("ACC-" + UUID.randomUUID());
+        accountDTO.setOpenDate(LocalDate.now());
+        accountDTO.setAccountStatus(AccountDTO.AccountStatusEnum.OPEN);
 
         return accountsApi.createAccount(accountDTO, UUID.randomUUID().toString())
                 .mapNotNull(result -> Objects.requireNonNull(result).getAccountId());

@@ -37,6 +37,13 @@ firefly:
           bootstrap-servers: localhost:9092
   stepevents:
     enabled: true
+  ledger:
+    gl:
+      opening-suspense-account-id: ${FIREFLY_LEDGER_GL_OPENING_SUSPENSE_ACCOUNT_ID:}
+      holds-clearing-account-id: ${FIREFLY_LEDGER_GL_HOLDS_CLEARING_ACCOUNT_ID:}
+      fee-income-account-id: ${FIREFLY_LEDGER_GL_FEE_INCOME_ACCOUNT_ID:}
+  balance:
+    source: ${FIREFLY_BALANCE_SOURCE:LEDGER}
 
 api-configuration:
   core-banking:
@@ -45,6 +52,9 @@ api-configuration:
   core-common:
     contracts:
       base-path: http://localhost:8082
+  core-platform:
+    banking-ledger:
+      base-path: http://localhost:8083
 
 server:
   address: ${SERVER_ADDRESS:localhost}

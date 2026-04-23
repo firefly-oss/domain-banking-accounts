@@ -32,7 +32,7 @@ public class AccountServiceImpl implements AccountService {
                 .forStepId(STEP_CREATE_CONTRACT, command.toContractCommand())
                 .forStepId(STEP_ADD_PARTY, command.toPartyCommand())
                 .forStepId(STEP_CREATE_ACCOUNT, command.toAccountCommand())
-                .forStepId(STEP_INIT_BALANCE, command.toBalanceCommand())
+                .forStepId(STEP_POST_OPENING_LEDGER, command.toOpeningLedgerInput())
                 .forStepId(STEP_CREATE_SPACE, command.toSpaceCommand())
                 .forStepId(STEP_RECORD_STATUS, command.toStatusCommand());
 
