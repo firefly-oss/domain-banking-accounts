@@ -23,7 +23,7 @@ import org.springframework.web.reactive.config.EnableWebFlux;
         version = "1.0.0",
         description = "Domain layer service for banking account orchestration - manages account lifecycle, holders, spaces, and restrictions",
         contact = @Contact(
-            name = "Firefly Software Solutions Inc",
+            name = "Firefly Software Foundation",
             email = "dev@getfirefly.io"
         )
     ),
