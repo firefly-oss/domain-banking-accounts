@@ -48,13 +48,13 @@ firefly:
 api-configuration:
   core-banking:
     accounts:
-      base-path: http://localhost:8081
+      base-path: ${ENDPOINT_CORE_BANKING_ACCOUNTS:http://localhost:8081}
   core-common:
     contracts:
-      base-path: http://localhost:8082
+      base-path: ${ENDPOINT_CORE_COMMON_CONTRACTS:http://localhost:8082}
   core-platform:
     banking-ledger:
-      base-path: http://localhost:8083
+      base-path: ${ENDPOINT_CORE_PLATFORM_BANKING_LEDGER:http://localhost:8083}
 
 server:
   address: ${SERVER_ADDRESS:localhost}
