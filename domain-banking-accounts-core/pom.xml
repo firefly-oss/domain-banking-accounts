@@ -10,6 +10,7 @@
     </parent>
 
     <artifactId>domain-banking-accounts-core</artifactId>
+    <name>domain-banking-accounts-core</name>
 
     <dependencies>
         <!-- Internal modules -->
