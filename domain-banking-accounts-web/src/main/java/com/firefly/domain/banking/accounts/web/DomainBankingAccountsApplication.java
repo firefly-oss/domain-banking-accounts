@@ -24,11 +24,11 @@ import org.springframework.web.reactive.config.EnableWebFlux;
         description = "Domain layer service for banking account orchestration - manages account lifecycle, holders, spaces, and restrictions",
         contact = @Contact(
             name = "Firefly Software Foundation",
-            email = "dev@getfirefly.io"
+            email = "dev@fireflysoftware.io"
         )
     ),
     servers = {
-        @Server(url = "http://domain.getfirefly.io/domain-banking-accounts", description = "Development Environment"),
+        @Server(url = "https://openplatform.fireflysoftware.io/domain-banking-accounts", description = "Development Environment"),
         @Server(url = "/", description = "Local Development Environment")
     }
 )
