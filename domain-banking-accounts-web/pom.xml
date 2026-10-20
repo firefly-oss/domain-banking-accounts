@@ -4,26 +4,26 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>com.firefly</groupId>
+        <groupId>io.fireflysoftware</groupId>
         <artifactId>domain-banking-accounts</artifactId>
-        <version>26.10.2</version>
+        <version>26.10.3</version>
     </parent>
 
     <artifactId>domain-banking-accounts-web</artifactId>
 
     <properties>
         <openapi.gen.skip>false</openapi.gen.skip>
-        <openapi.gen.mainClass>com.firefly.domain.banking.accounts.web.openapi.OpenApiGenApplication</openapi.gen.mainClass>
+        <openapi.gen.mainClass>io.fireflysoftware.domain.banking.accounts.web.openapi.OpenApiGenApplication</openapi.gen.mainClass>
     </properties>
 
     <dependencies>
         <!-- Internal modules -->
         <dependency>
-            <groupId>com.firefly</groupId>
+            <groupId>io.fireflysoftware</groupId>
             <artifactId>domain-banking-accounts-interfaces</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.firefly</groupId>
+            <groupId>io.fireflysoftware</groupId>
             <artifactId>domain-banking-accounts-core</artifactId>
         </dependency>
 

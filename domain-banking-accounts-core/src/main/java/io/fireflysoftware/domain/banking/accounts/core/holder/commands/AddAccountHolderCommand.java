@@ -1,0 +1,15 @@
+package io.fireflysoftware.domain.banking.accounts.core.holder.commands;
+
+import lombok.Builder;
+import lombok.Data;
+import org.fireflyframework.cqrs.command.Command;
+
+import java.util.UUID;
+
+@Data
+@Builder
+public class AddAccountHolderCommand implements Command<UUID> {
+    private UUID accountId;
+    private UUID partyId;
+    private UUID roleInContractId;
+}
