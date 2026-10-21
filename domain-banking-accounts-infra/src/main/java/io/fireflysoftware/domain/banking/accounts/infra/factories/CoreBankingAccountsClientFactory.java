@@ -27,6 +27,8 @@ import io.fireflysoftware.core.banking.accounts.sdk.api.AccountSpaceTransactions
 import io.fireflysoftware.core.banking.accounts.sdk.api.AccountSpacesApi;
 import io.fireflysoftware.core.banking.accounts.sdk.api.AccountStatusHistoryApi;
 import io.fireflysoftware.core.banking.accounts.sdk.api.AccountsApi;
+import io.fireflysoftware.core.banking.accounts.sdk.api.DepositProductApi;
+import io.fireflysoftware.core.banking.accounts.sdk.api.ServicingMandateApi;
 import io.fireflysoftware.core.banking.accounts.sdk.api.AssetPricesApi;
 import io.fireflysoftware.core.banking.accounts.sdk.invoker.ApiClient;
 import io.fireflysoftware.domain.banking.accounts.infra.properties.CoreBankingAccountsProperties;
@@ -96,5 +98,15 @@ public class CoreBankingAccountsClientFactory {
     @Bean
     public AssetPricesApi assetPricesApi() {
         return new AssetPricesApi(apiClient);
+    }
+
+    @Bean
+    public DepositProductApi depositProductApi() {
+        return new DepositProductApi(apiClient);
+    }
+
+    @Bean
+    public ServicingMandateApi servicingMandateApi() {
+        return new ServicingMandateApi(apiClient);
     }
 }
