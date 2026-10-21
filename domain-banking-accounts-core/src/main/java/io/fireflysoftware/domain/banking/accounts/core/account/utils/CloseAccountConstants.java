@@ -54,6 +54,8 @@ public final class CloseAccountConstants {
     public static final String CTX_CONTRACT_ID = "contractId";
     public static final String CTX_SPACES_BACKUP = "spacesBackup";
     public static final String CTX_PREVIOUS_STATUS = "previousStatus";
+    public static final String CTX_PREVIOUS_CONTRACT_STATUS = "previousContractStatus";
+    public static final String CTX_STATUS_HISTORY_ID = "statusHistoryId";
     public static final String CTX_RESIDUAL_AMOUNT = "residualAmount";
     public static final String CTX_FORCE_CLOSE = "forceClose";
     public static final String CTX_DESTINATION_ACCOUNT_ID = "destinationAccountId";

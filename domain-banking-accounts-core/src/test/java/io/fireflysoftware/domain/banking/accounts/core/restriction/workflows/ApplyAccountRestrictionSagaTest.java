@@ -22,6 +22,7 @@ import io.fireflysoftware.domain.banking.accounts.core.ledger.commands.PostLedge
 import io.fireflysoftware.domain.banking.accounts.core.ledger.commands.PostLedgerTransactionResult;
 import io.fireflysoftware.domain.banking.accounts.infra.properties.LedgerGlProperties;
 import org.fireflyframework.cqrs.command.CommandBus;
+import org.fireflyframework.cqrs.query.QueryBus;
 import org.fireflyframework.orchestration.core.context.ExecutionContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -55,6 +56,8 @@ class ApplyAccountRestrictionSagaTest {
     @Mock
     private CommandBus commandBus;
     @Mock
+    private QueryBus queryBus;
+    @Mock
     private ExecutionContext ctx;
 
     private LedgerGlProperties ledgerGlProperties;
@@ -67,7 +70,7 @@ class ApplyAccountRestrictionSagaTest {
     void setUp() {
         ledgerGlProperties = new LedgerGlProperties();
         ledgerGlProperties.setHoldsClearingAccountId(GL_HOLDS_CLEARING);
-        saga = new ApplyAccountRestrictionSaga(commandBus, ledgerGlProperties);
+        saga = new ApplyAccountRestrictionSaga(commandBus, queryBus, ledgerGlProperties);
     }
 
     @Test

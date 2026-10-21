@@ -17,16 +17,29 @@
 
 package io.fireflysoftware.domain.banking.accounts.core.account.workflows;
 
+import io.fireflysoftware.core.banking.accounts.sdk.model.AccountDTO;
+import io.fireflysoftware.core.banking.accounts.sdk.model.AccountSpaceDTO;
+import io.fireflysoftware.core.banking.accounts.sdk.model.PaginationResponseAccountSpaceDTO;
 import io.fireflysoftware.core.banking.ledger.sdk.model.TransactionLineFeeDTO;
 import io.fireflysoftware.core.banking.ledger.sdk.model.TransactionLineTransferDTO;
+import io.fireflysoftware.core.contract.sdk.model.ContractDTO;
+import io.fireflysoftware.domain.banking.accounts.core.account.commands.ApplyContractStatusCommand;
 import io.fireflysoftware.domain.banking.accounts.core.account.commands.CloseAccountCommand;
-import io.fireflysoftware.domain.banking.accounts.core.account.commands.TerminateContractCommand;
+import io.fireflysoftware.domain.banking.accounts.core.account.commands.GetContractCommand;
+import io.fireflysoftware.domain.banking.accounts.core.account.commands.RecordStatusCommand;
+import io.fireflysoftware.domain.banking.accounts.core.account.commands.RemoveAccountStatusHistoryCommand;
+import io.fireflysoftware.domain.banking.accounts.core.account.commands.UpdateAccountStatusCommand;
 import io.fireflysoftware.domain.banking.accounts.core.account.exceptions.AccountNotEmptyException;
+import io.fireflysoftware.domain.banking.accounts.core.account.queries.GetAccountQuery;
+import io.fireflysoftware.domain.banking.accounts.core.holder.commands.GetAccountContractCommand;
 import io.fireflysoftware.domain.banking.accounts.core.ledger.commands.LedgerLegSpec;
 import io.fireflysoftware.domain.banking.accounts.core.ledger.commands.PostLedgerTransactionCommand;
 import io.fireflysoftware.domain.banking.accounts.core.ledger.commands.PostLedgerTransactionResult;
 import io.fireflysoftware.domain.banking.accounts.core.ledger.queries.GetAccountResidualBalanceQuery;
 import io.fireflysoftware.domain.banking.accounts.core.ledger.queries.result.AccountResidualBalanceResult;
+import io.fireflysoftware.domain.banking.accounts.core.space.commands.RecreateAccountSpaceCommand;
+import io.fireflysoftware.domain.banking.accounts.core.space.commands.RemoveAccountSpaceCommand;
+import io.fireflysoftware.domain.banking.accounts.core.space.queries.GetAccountSpacesQuery;
 import io.fireflysoftware.domain.banking.accounts.infra.properties.LedgerGlProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.fireflyframework.cqrs.command.CommandBus;
@@ -37,10 +50,13 @@ import org.fireflyframework.orchestration.saga.annotation.Saga;
 import org.fireflyframework.orchestration.saga.annotation.SagaStep;
 import org.fireflyframework.orchestration.saga.annotation.StepEvent;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -54,11 +70,13 @@ import static io.fireflysoftware.domain.banking.accounts.core.account.utils.Clos
 import static io.fireflysoftware.domain.banking.accounts.core.account.utils.CloseAccountConstants.CTX_DESTINATION_ACCOUNT_ID;
 import static io.fireflysoftware.domain.banking.accounts.core.account.utils.CloseAccountConstants.CTX_FEES_OWED;
 import static io.fireflysoftware.domain.banking.accounts.core.account.utils.CloseAccountConstants.CTX_FORCE_CLOSE;
+import static io.fireflysoftware.domain.banking.accounts.core.account.utils.CloseAccountConstants.CTX_PREVIOUS_CONTRACT_STATUS;
 import static io.fireflysoftware.domain.banking.accounts.core.account.utils.CloseAccountConstants.CTX_PREVIOUS_STATUS;
 import static io.fireflysoftware.domain.banking.accounts.core.account.utils.CloseAccountConstants.CTX_RESIDUAL_AMOUNT;
 import static io.fireflysoftware.domain.banking.accounts.core.account.utils.CloseAccountConstants.CTX_SETTLE_FEE_TX_ID;
 import static io.fireflysoftware.domain.banking.accounts.core.account.utils.CloseAccountConstants.CTX_SETTLE_RESIDUAL_TX_ID;
 import static io.fireflysoftware.domain.banking.accounts.core.account.utils.CloseAccountConstants.CTX_SPACES_BACKUP;
+import static io.fireflysoftware.domain.banking.accounts.core.account.utils.CloseAccountConstants.CTX_STATUS_HISTORY_ID;
 import static io.fireflysoftware.domain.banking.accounts.core.account.utils.CloseAccountConstants.EVENT_BALANCE_VALIDATED;
 import static io.fireflysoftware.domain.banking.accounts.core.account.utils.CloseAccountConstants.EVENT_CONTRACT_TERMINATED;
 import static io.fireflysoftware.domain.banking.accounts.core.account.utils.CloseAccountConstants.EVENT_SETTLED;
@@ -111,6 +129,8 @@ public class CloseAccountSaga {
     private static final String DESC_SETTLE_RESIDUAL = "Account closure residual transfer";
     private static final String DESC_REVERSE_FEES = "Reversal of closure fees settlement";
     private static final String DESC_REVERSE_RESIDUAL = "Reversal of closure residual transfer";
+
+    private static final String CLOSED = "CLOSED";
 
     private final CommandBus commandBus;
     private final QueryBus queryBus;
@@ -311,57 +331,122 @@ public class CloseAccountSaga {
     @SagaStep(id = STEP_REMOVE_SPACES, compensate = COMPENSATE_RECREATE_SPACES, dependsOn = STEP_SETTLE)
     @StepEvent(type = EVENT_SPACES_REMOVED)
     public Mono<Object> removeSpaces(ExecutionContext ctx) {
-        ctx.putVariable(CTX_SPACES_BACKUP, List.of());
-        // TODO: Call AccountSpacesApi to delete non-MAIN spaces, then MAIN, once the SDK endpoint is wired.
-        return Mono.just(RESULT_SKIPPED);
+        UUID accountId = ctx.getVariableAs(CTX_ACCOUNT_ID, UUID.class);
+        return queryBus.<PaginationResponseAccountSpaceDTO>query(GetAccountSpacesQuery.builder().accountId(accountId).build())
+                .flatMap(page -> {
+                    List<AccountSpaceDTO> spaces = new ArrayList<>(
+                            page == null || page.getContent() == null ? List.of() : page.getContent());
+                    spaces.sort(Comparator.comparing(space -> space.getSpaceType() == AccountSpaceDTO.SpaceTypeEnum.MAIN));
+                    ctx.putVariable(CTX_SPACES_BACKUP, spaces);
+                    List<UUID> deleted = new ArrayList<>();
+                    return Flux.fromIterable(spaces)
+                            .concatMap(space -> commandBus.<Void>send(new RemoveAccountSpaceCommand(space.getAccountSpaceId()))
+                                    .doOnSuccess(ignored -> deleted.add(space.getAccountSpaceId())))
+                            .then(Mono.just((Object) spaces.size()))
+                            .onErrorResume(error -> restoreSpaces(spaces.stream()
+                                            .filter(space -> deleted.contains(space.getAccountSpaceId()))
+                                            .toList())
+                                    .then(Mono.error(error)));
+                });
     }
 
     public Mono<Void> recreateSpaces(ExecutionContext ctx) {
-        List<?> spacesBackup = (List<?>) ctx.getVariable(CTX_SPACES_BACKUP);
-        if (spacesBackup == null || spacesBackup.isEmpty()) {
+        Object backup = ctx.getVariable(CTX_SPACES_BACKUP);
+        if (!(backup instanceof List<?> spaces) || spaces.isEmpty()) {
             return Mono.empty();
         }
-        // TODO: Recreate spaces from backup once the SDK endpoint is wired.
-        return Mono.empty();
+        List<AccountSpaceDTO> typed = spaces.stream()
+                .filter(AccountSpaceDTO.class::isInstance)
+                .map(AccountSpaceDTO.class::cast)
+                .toList();
+        return restoreSpaces(typed);
+    }
+
+    private Mono<Void> restoreSpaces(List<AccountSpaceDTO> spaces) {
+        if (spaces == null || spaces.isEmpty()) {
+            return Mono.empty();
+        }
+        List<AccountSpaceDTO> ordered = new ArrayList<>(spaces);
+        ordered.sort(Comparator.comparing(space -> space.getSpaceType() != AccountSpaceDTO.SpaceTypeEnum.MAIN));
+        return Flux.fromIterable(ordered)
+                .concatMap(space -> commandBus.<UUID>send(new RecreateAccountSpaceCommand(space)))
+                .then();
     }
 
     @SagaStep(id = STEP_UPDATE_STATUS, compensate = COMPENSATE_REVERT_STATUS, dependsOn = STEP_REMOVE_SPACES)
     @StepEvent(type = EVENT_STATUS_UPDATED)
     public Mono<Object> updateAccountStatus(ExecutionContext ctx) {
-        ctx.putVariable(CTX_PREVIOUS_STATUS, "OPEN");
-        // TODO: Update account status to CLOSED and record in history via SDK once wired.
-        return Mono.just(RESULT_SKIPPED);
+        UUID accountId = ctx.getVariableAs(CTX_ACCOUNT_ID, UUID.class);
+        return queryBus.<AccountDTO>query(GetAccountQuery.builder().accountId(accountId).build())
+                .flatMap(account -> {
+                    String previous = account == null || account.getAccountStatus() == null
+                            ? "OPEN"
+                            : account.getAccountStatus().getValue();
+                    ctx.putVariable(CTX_PREVIOUS_STATUS, previous);
+                    if (account != null && account.getContractId() != null) {
+                        ctx.putVariable(CTX_CONTRACT_ID, account.getContractId());
+                    }
+                    return commandBus.<AccountDTO>send(new UpdateAccountStatusCommand(accountId, CLOSED, "Account closed"))
+                            .then(commandBus.<UUID>send(RecordStatusCommand.builder()
+                                    .accountId(accountId)
+                                    .status(CLOSED)
+                                    .reason("Account closed")
+                                    .build()))
+                            .doOnNext(historyId -> ctx.putVariable(CTX_STATUS_HISTORY_ID, historyId))
+                            .map(historyId -> (Object) historyId);
+                });
     }
 
     public Mono<Void> revertAccountStatus(ExecutionContext ctx) {
         String previousStatus = (String) ctx.getVariable(CTX_PREVIOUS_STATUS);
-        if (previousStatus == null) {
+        UUID accountId = ctx.getVariableAs(CTX_ACCOUNT_ID, UUID.class);
+        if (previousStatus == null || accountId == null) {
             return Mono.empty();
         }
-        // TODO: Revert to previous status via SDK once wired.
-        return Mono.empty();
+        UUID historyId = (UUID) ctx.getVariable(CTX_STATUS_HISTORY_ID);
+        Mono<Void> removeHistory = historyId == null
+                ? Mono.empty()
+                : commandBus.send(new RemoveAccountStatusHistoryCommand(accountId, historyId));
+        return removeHistory.then(commandBus.send(
+                new UpdateAccountStatusCommand(accountId, previousStatus, "Account closure rolled back")).then());
     }
 
     @SagaStep(id = STEP_TERMINATE_CONTRACT, compensate = COMPENSATE_REACTIVATE_CONTRACT, dependsOn = STEP_UPDATE_STATUS)
     @StepEvent(type = EVENT_CONTRACT_TERMINATED)
-    public Mono<Void> terminateContract(ExecutionContext ctx) {
-        UUID contractId = (UUID) ctx.getVariable(CTX_CONTRACT_ID);
-        if (contractId == null) {
-            // TODO: Look up contractId from account via SDK once wired.
-            contractId = UUID.randomUUID();
-            ctx.putVariable(CTX_CONTRACT_ID, contractId);
-        }
-        return commandBus.<Void>send(TerminateContractCommand.builder()
-                .contractId(contractId)
-                .build());
+    public Mono<ContractDTO> terminateContract(ExecutionContext ctx) {
+        UUID accountId = ctx.getVariableAs(CTX_ACCOUNT_ID, UUID.class);
+        UUID knownContractId = (UUID) ctx.getVariable(CTX_CONTRACT_ID);
+        Mono<UUID> contractId = knownContractId != null
+                ? Mono.just(knownContractId)
+                : commandBus.<UUID>send(GetAccountContractCommand.builder().accountId(accountId).build());
+        return contractId
+                .switchIfEmpty(Mono.error(new IllegalStateException("Account has no contract to terminate")))
+                .flatMap(id -> {
+                    ctx.putVariable(CTX_CONTRACT_ID, id);
+                    return commandBus.<ContractDTO>send(new GetContractCommand(id));
+                })
+                .flatMap(contract -> {
+                    if (contract.getContractStatus() == null) {
+                        return Mono.error(new IllegalStateException("Contract has no current status"));
+                    }
+                    ctx.putVariable(CTX_PREVIOUS_CONTRACT_STATUS, contract.getContractStatus().getValue());
+                    contract.setContractStatus(ContractDTO.ContractStatusEnum.TERMINATED);
+                    contract.setEndDate(LocalDateTime.now());
+                    return commandBus.<ContractDTO>send(new ApplyContractStatusCommand(contract.getContractId(), contract));
+                });
     }
 
     public Mono<Void> reactivateContract(ExecutionContext ctx) {
         UUID contractId = (UUID) ctx.getVariable(CTX_CONTRACT_ID);
-        if (contractId == null) {
+        String previousStatus = (String) ctx.getVariable(CTX_PREVIOUS_CONTRACT_STATUS);
+        if (contractId == null || previousStatus == null) {
             return Mono.empty();
         }
-        // TODO: Reactivate contract via SDK once wired.
-        return Mono.empty();
+        return commandBus.<ContractDTO>send(new GetContractCommand(contractId))
+                .flatMap(contract -> {
+                    contract.setContractStatus(ContractDTO.ContractStatusEnum.fromValue(previousStatus));
+                    contract.setEndDate(null);
+                    return commandBus.send(new ApplyContractStatusCommand(contractId, contract)).then();
+                });
     }
 }

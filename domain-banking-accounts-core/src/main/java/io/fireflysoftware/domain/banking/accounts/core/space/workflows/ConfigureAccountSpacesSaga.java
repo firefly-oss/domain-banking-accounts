@@ -21,7 +21,9 @@ import io.fireflysoftware.core.banking.ledger.sdk.model.TransactionLineTransferD
 import io.fireflysoftware.domain.banking.accounts.core.ledger.commands.LedgerLegSpec;
 import io.fireflysoftware.domain.banking.accounts.core.ledger.commands.PostLedgerTransactionCommand;
 import io.fireflysoftware.domain.banking.accounts.core.ledger.commands.PostLedgerTransactionResult;
+import io.fireflysoftware.domain.banking.accounts.core.space.commands.ConfigureAccountSpaceTransfersCommand;
 import io.fireflysoftware.domain.banking.accounts.core.space.commands.CreateAccountSpaceCommand;
+import io.fireflysoftware.domain.banking.accounts.core.space.commands.RemoveAccountSpaceCommand;
 import lombok.extern.slf4j.Slf4j;
 import org.fireflyframework.cqrs.command.CommandBus;
 import org.fireflyframework.orchestration.core.argument.CorrelationId;
@@ -103,14 +105,15 @@ public class ConfigureAccountSpacesSaga {
         if (cmd.getSourceSpaceId() != null) ctx.putVariable(CTX_SOURCE_SPACE_ID, cmd.getSourceSpaceId());
         if (cmd.getCurrency() != null) ctx.putVariable(CTX_ACCOUNT_CURRENCY, cmd.getCurrency());
         if (cmd.getInitialAmount() != null) ctx.putVariable(CTX_INITIAL_AMOUNT, cmd.getInitialAmount());
-        // TODO: Call AccountSpacesApi.createSpace once the core-banking-accounts SDK endpoint is wired.
-        return Mono.just(UUID.randomUUID())
+        return commandBus.<UUID>send(cmd)
                 .doOnNext(spaceId -> ctx.putVariable(CTX_SPACE_ID, spaceId));
     }
 
     public Mono<Void> deleteSpace(UUID spaceId, ExecutionContext ctx) {
-        // TODO: Call AccountSpacesApi.deleteSpace once the core-banking-accounts SDK endpoint is wired.
-        return Mono.empty();
+        if (spaceId == null) {
+            return Mono.empty();
+        }
+        return commandBus.send(new RemoveAccountSpaceCommand(spaceId));
     }
 
     @SagaStep(id = STEP_INIT_SPACE_BALANCE, compensate = COMPENSATE_REVERSE_SPACE_INIT, dependsOn = STEP_CREATE_SPACE)
@@ -203,11 +206,25 @@ public class ConfigureAccountSpacesSaga {
         if (cmd == null || cmd.getAutoTransferRules() == null) {
             return Mono.just(RESULT_SKIPPED);
         }
-        // TODO: Call AccountSpacesApi.updateSpace with auto-transfer configuration once the SDK endpoint is wired.
-        return Mono.just(RESULT_SKIPPED);
+        UUID spaceId = ctx.getVariableAs(CTX_SPACE_ID, UUID.class);
+        if (spaceId == null) {
+            return Mono.error(new IllegalStateException("Account space was not created"));
+        }
+        CreateAccountSpaceCommand.AutoTransferRules rules = cmd.getAutoTransferRules();
+        return commandBus.<UUID>send(new ConfigureAccountSpaceTransfersCommand(
+                        spaceId,
+                        true,
+                        rules.getFrequency(),
+                        rules.getAmount(),
+                        rules.getSourceSpaceId()))
+                .map(id -> (Object) id);
     }
 
     public Mono<Void> removeAutoTransferConfig(ExecutionContext ctx) {
-        return Mono.empty();
+        UUID spaceId = ctx.getVariableAs(CTX_SPACE_ID, UUID.class);
+        if (spaceId == null) {
+            return Mono.empty();
+        }
+        return commandBus.send(new ConfigureAccountSpaceTransfersCommand(spaceId, false, null, null, null)).then();
     }
 }

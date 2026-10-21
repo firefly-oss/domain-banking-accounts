@@ -71,7 +71,7 @@ class RemoveAccountRestrictionSagaTest {
     }
 
     @Test
-    @DisplayName("markRestrictionInactive stashes command fields into ctx and returns \"skipped\" sentinel")
+    @DisplayName("markRestrictionInactive stashes command fields and inactivates the restriction")
     void markRestrictionInactive_stashesContext() {
         UUID accountId = UUID.randomUUID();
         UUID restrictionId = UUID.randomUUID();
@@ -85,10 +85,13 @@ class RemoveAccountRestrictionSagaTest {
                 .holdAmount(amount)
                 .currency("EUR")
                 .build();
+        when(commandBus.<Void>send(any(RemoveRestrictionCommand.class))).thenReturn(Mono.empty());
 
         StepVerifier.create(saga.markRestrictionInactive(cmd, ctx))
-                .assertNext(result -> assertThat(result).isEqualTo(RESULT_SKIPPED))
+                .assertNext(result -> assertThat(result).isEqualTo(restrictionId))
                 .verifyComplete();
+
+        verify(commandBus).send(cmd);
 
         verify(ctx).putVariable(CTX_ACCOUNT_ID, accountId);
         verify(ctx).putVariable(CTX_RESTRICTION_ID, restrictionId);

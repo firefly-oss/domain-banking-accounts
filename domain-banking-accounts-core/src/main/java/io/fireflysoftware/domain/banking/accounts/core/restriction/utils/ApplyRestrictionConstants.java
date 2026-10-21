@@ -36,6 +36,7 @@ public final class ApplyRestrictionConstants {
     public static final String COMPENSATE_REMOVE_RESTRICTION = "removeRestriction";
     public static final String COMPENSATE_REVERSE_HOLD = "reverseLedgerHold";
     public static final String COMPENSATE_REVERT_STATUS = "revertAccountStatus";
+    public static final String COMPENSATE_DELETE_NOTIFICATION = "deleteNotification";
 
     // ============================== EVENT TYPES ==============================
     public static final String EVENT_RESTRICTION_CREATED = "account.restriction.created";
@@ -51,6 +52,8 @@ public final class ApplyRestrictionConstants {
     public static final String CTX_ACCOUNT_CURRENCY = "accountCurrency";
     public static final String CTX_HOLD_TX_ID = "holdTransactionId";
     public static final String CTX_PREVIOUS_STATUS = "previousStatus";
+    public static final String CTX_STATUS_HISTORY_ID = "statusHistoryId";
+    public static final String CTX_NOTIFICATION_ID = "notificationId";
 
     // ============================== SENTINEL RESULTS ==============================
     public static final String RESULT_SKIPPED = "skipped";

@@ -24,8 +24,10 @@ import io.fireflysoftware.domain.banking.accounts.core.account.commands.CreateCo
 import io.fireflysoftware.domain.banking.accounts.core.account.commands.CreateMainSpaceCommand;
 import io.fireflysoftware.domain.banking.accounts.core.account.commands.PostOpeningLedgerInput;
 import io.fireflysoftware.domain.banking.accounts.core.account.commands.RecordStatusCommand;
+import io.fireflysoftware.domain.banking.accounts.core.account.commands.RemoveAccountParameterCommand;
 import io.fireflysoftware.domain.banking.accounts.core.account.commands.RemovePartyFromContractCommand;
 import io.fireflysoftware.domain.banking.accounts.core.account.commands.SetParameterCommand;
+import io.fireflysoftware.domain.banking.accounts.core.space.commands.RemoveAccountSpaceCommand;
 import io.fireflysoftware.domain.banking.accounts.core.account.commands.TerminateContractCommand;
 import io.fireflysoftware.domain.banking.accounts.core.ledger.commands.LedgerLegSpec;
 import io.fireflysoftware.domain.banking.accounts.core.ledger.commands.PostLedgerTransactionCommand;
@@ -254,7 +256,10 @@ public class OpenAccountSaga {
     }
 
     public Mono<Void> deleteSpace(UUID spaceId, ExecutionContext ctx) {
-        return Mono.empty();
+        if (spaceId == null) {
+            return Mono.empty();
+        }
+        return commandBus.send(new RemoveAccountSpaceCommand(spaceId));
     }
 
     @SagaStep(id = STEP_RECORD_STATUS, dependsOn = STEP_CREATE_ACCOUNT)
@@ -278,6 +283,13 @@ public class OpenAccountSaga {
     }
 
     public Mono<Void> deleteParameters(Object parameterId, ExecutionContext ctx) {
-        return Mono.empty();
+        if (!(parameterId instanceof UUID id)) {
+            return Mono.empty();
+        }
+        UUID accountId = ctx.getVariableAs(CTX_ACCOUNT_ID, UUID.class);
+        if (accountId == null) {
+            return Mono.empty();
+        }
+        return commandBus.send(new RemoveAccountParameterCommand(accountId, id));
     }
 }

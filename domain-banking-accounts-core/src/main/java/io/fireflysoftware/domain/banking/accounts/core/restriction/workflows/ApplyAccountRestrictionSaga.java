@@ -21,11 +21,19 @@ import io.fireflysoftware.core.banking.ledger.sdk.model.TransactionLineFeeDTO;
 import io.fireflysoftware.domain.banking.accounts.core.ledger.commands.LedgerLegSpec;
 import io.fireflysoftware.domain.banking.accounts.core.ledger.commands.PostLedgerTransactionCommand;
 import io.fireflysoftware.domain.banking.accounts.core.ledger.commands.PostLedgerTransactionResult;
+import io.fireflysoftware.core.banking.accounts.sdk.model.AccountDTO;
+import io.fireflysoftware.domain.banking.accounts.core.account.commands.RecordStatusCommand;
+import io.fireflysoftware.domain.banking.accounts.core.account.commands.RemoveAccountStatusHistoryCommand;
+import io.fireflysoftware.domain.banking.accounts.core.account.commands.UpdateAccountStatusCommand;
+import io.fireflysoftware.domain.banking.accounts.core.account.queries.GetAccountQuery;
 import io.fireflysoftware.domain.banking.accounts.core.restriction.commands.ApplyRestrictionCommand;
+import io.fireflysoftware.domain.banking.accounts.core.restriction.commands.CreateAccountNotificationCommand;
+import io.fireflysoftware.domain.banking.accounts.core.restriction.commands.RemoveAccountNotificationCommand;
 import io.fireflysoftware.domain.banking.accounts.core.restriction.commands.RemoveRestrictionCommand;
 import io.fireflysoftware.domain.banking.accounts.infra.properties.LedgerGlProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.fireflyframework.cqrs.command.CommandBus;
+import org.fireflyframework.cqrs.query.QueryBus;
 import org.fireflyframework.orchestration.core.argument.CorrelationId;
 import org.fireflyframework.orchestration.core.context.ExecutionContext;
 import org.fireflyframework.orchestration.saga.annotation.Saga;
@@ -40,9 +48,12 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import static io.fireflysoftware.domain.banking.accounts.core.restriction.utils.ApplyRestrictionConstants.COMPENSATE_DELETE_NOTIFICATION;
 import static io.fireflysoftware.domain.banking.accounts.core.restriction.utils.ApplyRestrictionConstants.COMPENSATE_REMOVE_RESTRICTION;
 import static io.fireflysoftware.domain.banking.accounts.core.restriction.utils.ApplyRestrictionConstants.COMPENSATE_REVERSE_HOLD;
 import static io.fireflysoftware.domain.banking.accounts.core.restriction.utils.ApplyRestrictionConstants.COMPENSATE_REVERT_STATUS;
+import static io.fireflysoftware.domain.banking.accounts.core.restriction.utils.ApplyRestrictionConstants.CTX_NOTIFICATION_ID;
+import static io.fireflysoftware.domain.banking.accounts.core.restriction.utils.ApplyRestrictionConstants.CTX_STATUS_HISTORY_ID;
 import static io.fireflysoftware.domain.banking.accounts.core.restriction.utils.ApplyRestrictionConstants.CTX_ACCOUNT_CURRENCY;
 import static io.fireflysoftware.domain.banking.accounts.core.restriction.utils.ApplyRestrictionConstants.CTX_ACCOUNT_ID;
 import static io.fireflysoftware.domain.banking.accounts.core.restriction.utils.ApplyRestrictionConstants.CTX_HOLD_TX_ID;
@@ -101,11 +112,15 @@ public class ApplyAccountRestrictionSaga {
     private static final String DESC_HOLD_POSTED = "Account restriction hold posted";
     private static final String DESC_HOLD_REVERSED = "Reversal of account restriction hold";
 
+    private static final String SUSPENDED = "SUSPENDED";
+
     private final CommandBus commandBus;
+    private final QueryBus queryBus;
     private final LedgerGlProperties ledgerGlProperties;
 
-    public ApplyAccountRestrictionSaga(CommandBus commandBus, LedgerGlProperties ledgerGlProperties) {
+    public ApplyAccountRestrictionSaga(CommandBus commandBus, QueryBus queryBus, LedgerGlProperties ledgerGlProperties) {
         this.commandBus = commandBus;
+        this.queryBus = queryBus;
         this.ledgerGlProperties = ledgerGlProperties;
     }
 
@@ -118,8 +133,7 @@ public class ApplyAccountRestrictionSaga {
         if (cmd.getRestrictionType() != null) ctx.putVariable(CTX_RESTRICTION_TYPE, cmd.getRestrictionType());
         if (cmd.getRestrictedAmount() != null) ctx.putVariable(CTX_RESTRICTED_AMOUNT, cmd.getRestrictedAmount());
         if (cmd.getCurrency() != null) ctx.putVariable(CTX_ACCOUNT_CURRENCY, cmd.getCurrency());
-        // TODO: Call AccountRestrictionsApi.createRestriction once the core-banking-accounts SDK endpoint is wired.
-        return Mono.just(UUID.randomUUID())
+        return commandBus.<UUID>send(cmd)
                 .doOnNext(restrictionId -> ctx.putVariable(CTX_RESTRICTION_ID, restrictionId));
     }
 
@@ -218,24 +232,57 @@ public class ApplyAccountRestrictionSaga {
         if (restrictionType == null || !STATUS_CHANGING_RESTRICTIONS.contains(restrictionType)) {
             return Mono.just(RESULT_SKIPPED);
         }
-        // TODO: Store previous status and update to SUSPENDED via AccountStatusHistoryApi once wired.
-        ctx.putVariable(CTX_PREVIOUS_STATUS, "OPEN");
-        return Mono.just(RESULT_SKIPPED);
+        UUID accountId = ctx.getVariableAs(CTX_ACCOUNT_ID, UUID.class);
+        return queryBus.<AccountDTO>query(GetAccountQuery.builder().accountId(accountId).build())
+                .flatMap(account -> {
+                    String previous = account == null || account.getAccountStatus() == null
+                            ? "OPEN"
+                            : account.getAccountStatus().getValue();
+                    ctx.putVariable(CTX_PREVIOUS_STATUS, previous);
+                    String reason = "Restriction applied: " + restrictionType;
+                    return commandBus.<AccountDTO>send(new UpdateAccountStatusCommand(accountId, SUSPENDED, reason))
+                            .then(commandBus.<UUID>send(RecordStatusCommand.builder()
+                                    .accountId(accountId)
+                                    .status(SUSPENDED)
+                                    .reason(reason)
+                                    .build()))
+                            .doOnNext(historyId -> ctx.putVariable(CTX_STATUS_HISTORY_ID, historyId))
+                            .map(historyId -> (Object) historyId);
+                });
     }
 
     public Mono<Void> revertAccountStatus(ExecutionContext ctx) {
         String previousStatus = (String) ctx.getVariable(CTX_PREVIOUS_STATUS);
-        if (previousStatus == null) {
+        UUID accountId = ctx.getVariableAs(CTX_ACCOUNT_ID, UUID.class);
+        if (previousStatus == null || accountId == null) {
             return Mono.empty();
         }
-        // TODO: Revert to previous status via AccountStatusHistoryApi once wired.
-        return Mono.empty();
+        UUID historyId = (UUID) ctx.getVariable(CTX_STATUS_HISTORY_ID);
+        Mono<Void> removeHistory = historyId == null
+                ? Mono.empty()
+                : commandBus.send(new RemoveAccountStatusHistoryCommand(accountId, historyId));
+        return removeHistory.then(commandBus.send(new UpdateAccountStatusCommand(
+                accountId, previousStatus, "Restriction rolled back")).then());
     }
 
-    @SagaStep(id = STEP_NOTIFY, dependsOn = STEP_CREATE_RESTRICTION)
+    @SagaStep(id = STEP_NOTIFY, compensate = COMPENSATE_DELETE_NOTIFICATION, dependsOn = STEP_CREATE_RESTRICTION)
     @StepEvent(type = EVENT_HOLDER_NOTIFIED)
     public Mono<Object> notifyHolder(ExecutionContext ctx) {
-        // TODO: Call AccountNotificationsApi.createNotification once wired.
-        return Mono.just(RESULT_SKIPPED);
+        UUID accountId = ctx.getVariableAs(CTX_ACCOUNT_ID, UUID.class);
+        if (accountId == null) {
+            return Mono.just(RESULT_SKIPPED);
+        }
+        String restrictionType = ctx.getVariableAs(CTX_RESTRICTION_TYPE, String.class);
+        return commandBus.<UUID>send(new CreateAccountNotificationCommand(accountId, restrictionType))
+                .doOnNext(notificationId -> ctx.putVariable(CTX_NOTIFICATION_ID, notificationId))
+                .map(notificationId -> (Object) notificationId);
+    }
+
+    public Mono<Void> deleteNotification(Object ignored, ExecutionContext ctx) {
+        UUID notificationId = (UUID) ctx.getVariable(CTX_NOTIFICATION_ID);
+        if (notificationId == null) {
+            return Mono.empty();
+        }
+        return commandBus.send(new RemoveAccountNotificationCommand(notificationId));
     }
 }

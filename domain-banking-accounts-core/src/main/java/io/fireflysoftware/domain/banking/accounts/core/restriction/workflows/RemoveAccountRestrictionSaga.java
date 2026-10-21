@@ -20,6 +20,7 @@ package io.fireflysoftware.domain.banking.accounts.core.restriction.workflows;
 import io.fireflysoftware.domain.banking.accounts.core.ledger.commands.LedgerLegSpec;
 import io.fireflysoftware.domain.banking.accounts.core.ledger.commands.PostLedgerTransactionCommand;
 import io.fireflysoftware.domain.banking.accounts.core.ledger.commands.PostLedgerTransactionResult;
+import io.fireflysoftware.domain.banking.accounts.core.restriction.commands.ReactivateAccountRestrictionCommand;
 import io.fireflysoftware.domain.banking.accounts.core.restriction.commands.RemoveRestrictionCommand;
 import io.fireflysoftware.domain.banking.accounts.infra.properties.LedgerGlProperties;
 import lombok.extern.slf4j.Slf4j;
@@ -97,13 +98,18 @@ public class RemoveAccountRestrictionSaga {
         if (cmd.getOriginalHoldTxId() != null) ctx.putVariable(CTX_ORIGINAL_HOLD_TX_ID, cmd.getOriginalHoldTxId());
         if (cmd.getHoldAmount() != null) ctx.putVariable(CTX_HOLD_AMOUNT, cmd.getHoldAmount());
         if (cmd.getCurrency() != null) ctx.putVariable(CTX_ACCOUNT_CURRENCY, cmd.getCurrency());
-        // TODO: Call AccountRestrictionsApi.updateRestriction with is_active=false once the SDK endpoint is wired.
-        return Mono.just(RESULT_SKIPPED);
+        if (cmd.getRestrictionId() == null) {
+            return Mono.error(new IllegalArgumentException("Restriction id is required"));
+        }
+        return commandBus.<Void>send(cmd).thenReturn(cmd.getRestrictionId());
     }
 
     public Mono<Void> reactivateRestriction(ExecutionContext ctx) {
-        // TODO: Call AccountRestrictionsApi.updateRestriction with is_active=true once the SDK endpoint is wired.
-        return Mono.empty();
+        UUID restrictionId = ctx.getVariableAs(CTX_RESTRICTION_ID, UUID.class);
+        if (restrictionId == null) {
+            return Mono.empty();
+        }
+        return commandBus.send(new ReactivateAccountRestrictionCommand(restrictionId));
     }
 
     @SagaStep(id = STEP_REVERSE_LEDGER_HOLD, dependsOn = STEP_MARK_RESTRICTION_INACTIVE)
