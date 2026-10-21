@@ -80,6 +80,14 @@ public class AccountRecordsApi {
         return post("/api/v1/account-records/accounts/" + accountId + "/servicing-mandates", body, key);
     }
 
+    public Mono<StatementView> statement(UUID accountId, UUID statementId) {
+        return get("/api/v1/account-records/accounts/" + accountId + "/statements/" + statementId, StatementView.class);
+    }
+
+    public Mono<MandateView> servicingMandate(UUID accountId, UUID mandateId) {
+        return get("/api/v1/account-records/accounts/" + accountId + "/servicing-mandates/" + mandateId, MandateView.class);
+    }
+
     private Mono<UUID> post(String path, Map<String, Object> body, String key) {
         return webClient.post()
                 .uri(basePath + path)
@@ -91,6 +99,20 @@ public class AccountRecordsApi {
                 .map(RecordedId::id);
     }
 
+    private <T> Mono<T> get(String path, Class<T> type) {
+        return webClient.get()
+                .uri(basePath + path)
+                .retrieve()
+                .bodyToMono(type);
+    }
+
     public record RecordedId(UUID id) {
+    }
+
+    public record StatementView(UUID id, String currency, BigDecimal openingBalance, List<BigDecimal> lineAmounts,
+                                BigDecimal credits, BigDecimal debits, BigDecimal closingBalance) {
+    }
+
+    public record MandateView(UUID id, UUID accountId, UUID partyId, String role, boolean active) {
     }
 }

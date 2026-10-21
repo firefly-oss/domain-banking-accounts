@@ -178,6 +178,134 @@ paths:
       responses:
         "200":
           description: OK
+  /api/v1/account-records/accounts/{accountId}/sweeps:
+    post:
+      tags:
+      - account-records-controller
+      operationId: spaceSweep
+      parameters:
+      - name: accountId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-Idempotency-Key
+        in: header
+        description: "Unique key for idempotent requests. If provided, ensures that\
+          \ identical requests with the same key will only be processed once."
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SpaceSweep"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/RecordedId"
+  /api/v1/account-records/accounts/{accountId}/statements:
+    post:
+      tags:
+      - account-records-controller
+      operationId: closeStatement
+      parameters:
+      - name: accountId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-Idempotency-Key
+        in: header
+        description: "Unique key for idempotent requests. If provided, ensures that\
+          \ identical requests with the same key will only be processed once."
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StatementClose"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/RecordedId"
+  /api/v1/account-records/accounts/{accountId}/servicing-mandates:
+    post:
+      tags:
+      - account-records-controller
+      operationId: servicingMandate
+      parameters:
+      - name: accountId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-Idempotency-Key
+        in: header
+        description: "Unique key for idempotent requests. If provided, ensures that\
+          \ identical requests with the same key will only be processed once."
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServicingMandate"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/RecordedId"
+  /api/v1/account-records/accounts/{accountId}/limits:
+    post:
+      tags:
+      - account-records-controller
+      operationId: withdrawalLimit
+      parameters:
+      - name: accountId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-Idempotency-Key
+        in: header
+        description: "Unique key for idempotent requests. If provided, ensures that\
+          \ identical requests with the same key will only be processed once."
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WithdrawalLimit"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/RecordedId"
   /api/v1/backoffice/accounts/{accountId}:
     get:
       tags:
@@ -402,6 +530,70 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/PaginationResponse"
+  /api/v1/account-records/accounts/{accountId}/statements/{statementId}:
+    get:
+      tags:
+      - account-records-controller
+      operationId: statement
+      parameters:
+      - name: accountId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: statementId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-Idempotency-Key
+        in: header
+        description: "Unique key for idempotent requests. If provided, ensures that\
+          \ identical requests with the same key will only be processed once."
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/StatementView"
+  /api/v1/account-records/accounts/{accountId}/servicing-mandates/{mandateId}:
+    get:
+      tags:
+      - account-records-controller
+      operationId: servicingMandate_1
+      parameters:
+      - name: accountId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: mandateId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-Idempotency-Key
+        in: header
+        description: "Unique key for idempotent requests. If provided, ensures that\
+          \ identical requests with the same key will only be processed once."
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MandateView"
   /api/v1/backoffice/accounts/{accountId}/restrictions/{restrictionId}:
     delete:
       tags:
@@ -629,6 +821,59 @@ components:
           type: string
           description: The status of the saga execution
       description: Response after adding an account holder
+    SpaceSweep:
+      type: object
+      properties:
+        sourceSpaceId:
+          type: string
+          format: uuid
+        targetSpaceId:
+          type: string
+          format: uuid
+        amount:
+          type: number
+        currency:
+          type: string
+    RecordedId:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+    StatementClose:
+      type: object
+      properties:
+        currency:
+          type: string
+        openingBalance:
+          type: number
+        lineAmounts:
+          type: array
+          items:
+            type: number
+    ServicingMandate:
+      type: object
+      properties:
+        partyId:
+          type: string
+          format: uuid
+        role:
+          type: string
+        active:
+          type: boolean
+    WithdrawalLimit:
+      type: object
+      properties:
+        currency:
+          type: string
+        withdrawalLimit:
+          type: number
+        overdraftLimit:
+          type: number
+        balance:
+          type: number
+        withdrawalAmount:
+          type: number
     AccountDTO:
       required:
       - accountNumber
@@ -643,12 +888,15 @@ components:
         dateCreated:
           type: string
           format: date-time
+          nullable: true
         dateUpdated:
           type: string
           format: date-time
+          nullable: true
         accountId:
           type: string
           format: uuid
+          nullable: true
         contractId:
           type: string
           format: uuid
@@ -685,9 +933,11 @@ components:
         closeDate:
           type: string
           format: date
+          nullable: true
         accountStatus:
           type: string
           enum:
+          - DRAFT
           - OPEN
           - CLOSED
           - SUSPENDED
@@ -697,8 +947,10 @@ components:
           format: uuid
         description:
           type: string
+          nullable: true
         accountSubType:
           type: string
+          nullable: true
           enum:
           - STANDARD_CHECKING
           - INTEREST_CHECKING
@@ -740,6 +992,7 @@ components:
           - GOVERNMENT_ASSISTANCE
         taxReportingStatus:
           type: string
+          nullable: true
           enum:
           - REPORTABLE
           - EXEMPT
@@ -752,6 +1005,7 @@ components:
           - NON_REPORTABLE
         regulatoryStatus:
           type: string
+          nullable: true
           enum:
           - COMPLIANT
           - PENDING_DOCUMENTATION
@@ -767,8 +1021,10 @@ components:
         maturityDate:
           type: string
           format: date
+          nullable: true
         interestAccrualMethod:
           type: string
+          nullable: true
           enum:
           - SIMPLE
           - DAILY_COMPOUND
@@ -788,6 +1044,7 @@ components:
           - DAY_COUNT_ACTUAL_ACTUAL
         interestPaymentFrequency:
           type: string
+          nullable: true
           enum:
           - DAILY
           - WEEKLY
@@ -803,34 +1060,45 @@ components:
           - NONE
         minimumBalance:
           type: number
+          nullable: true
         overdraftLimit:
           type: number
+          nullable: true
         walletAddress:
           type: string
+          nullable: true
         blockchainNetwork:
           type: string
+          nullable: true
         tokenContractAddress:
           type: string
+          nullable: true
         tokenStandard:
           type: string
+          nullable: true
         isCustodial:
           type: boolean
+          nullable: true
     PaginationResponse:
       type: object
       properties:
         content:
           type: array
+          nullable: true
           items:
             type: object
         totalElements:
           type: integer
           format: int64
+          nullable: true
         totalPages:
           type: integer
           format: int32
+          nullable: true
         currentPage:
           type: integer
           format: int32
+          nullable: true
     AccountSpaceDTO:
       required:
       - accountId
@@ -842,12 +1110,15 @@ components:
         dateCreated:
           type: string
           format: date-time
+          nullable: true
         dateUpdated:
           type: string
           format: date-time
+          nullable: true
         accountSpaceId:
           type: string
           format: uuid
+          nullable: true
         accountId:
           type: string
           format: uuid
@@ -866,30 +1137,42 @@ components:
           type: number
         targetAmount:
           type: number
+          nullable: true
         targetDate:
           type: string
           format: date-time
+          nullable: true
         iconId:
           type: string
+          nullable: true
         colorCode:
           type: string
+          nullable: true
         description:
           type: string
+          nullable: true
         isVisible:
           type: boolean
+          nullable: true
         goalProgressPercentage:
           type: number
+          nullable: true
         remainingToTarget:
           type: number
+          nullable: true
         estimatedCompletionDate:
           type: string
           format: date-time
+          nullable: true
         isGoalCompleted:
           type: boolean
+          nullable: true
         enableAutomaticTransfers:
           type: boolean
+          nullable: true
         transferFrequency:
           type: string
+          nullable: true
           enum:
           - DAILY
           - WEEKLY
@@ -898,42 +1181,55 @@ components:
           - ANNUALLY
         transferAmount:
           type: number
+          nullable: true
         sourceSpaceId:
           type: string
           format: uuid
+          nullable: true
         averageGrowthRate:
           type: number
+          nullable: true
         contributionToAccountTotal:
           type: number
+          nullable: true
         isFrozen:
           type: boolean
+          nullable: true
         frozenDateTime:
           type: string
           format: date-time
+          nullable: true
         unfrozenDateTime:
           type: string
           format: date-time
+          nullable: true
         lastBalanceUpdateReason:
           type: string
+          nullable: true
         lastBalanceUpdateDateTime:
           type: string
           format: date-time
+          nullable: true
     PaginationResponseAccountSpaceDTO:
       type: object
       properties:
         content:
           type: array
+          nullable: true
           items:
             $ref: "#/components/schemas/AccountSpaceDTO"
         totalElements:
           type: integer
           format: int64
+          nullable: true
         totalPages:
           type: integer
           format: int32
+          nullable: true
         currentPage:
           type: integer
           format: int32
+          nullable: true
     AccountRestrictionDTO:
       required:
       - accountId
@@ -946,12 +1242,15 @@ components:
         dateCreated:
           type: string
           format: date-time
+          nullable: true
         dateUpdated:
           type: string
           format: date-time
+          nullable: true
         accountRestrictionId:
           type: string
           format: uuid
+          nullable: true
         accountId:
           type: string
           format: uuid
@@ -988,17 +1287,59 @@ components:
         endDateTime:
           type: string
           format: date-time
+          nullable: true
         restrictedAmount:
           type: number
+          nullable: true
         referenceNumber:
           type: string
+          nullable: true
         reason:
           type: string
         appliedBy:
           type: string
         removedBy:
           type: string
+          nullable: true
         notes:
           type: string
+          nullable: true
         isActive:
+          type: boolean
+          nullable: true
+    StatementView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        currency:
+          type: string
+        openingBalance:
+          type: number
+        lineAmounts:
+          type: array
+          items:
+            type: number
+        credits:
+          type: number
+        debits:
+          type: number
+        closingBalance:
+          type: number
+    MandateView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        accountId:
+          type: string
+          format: uuid
+        partyId:
+          type: string
+          format: uuid
+        role:
+          type: string
+        active:
           type: boolean

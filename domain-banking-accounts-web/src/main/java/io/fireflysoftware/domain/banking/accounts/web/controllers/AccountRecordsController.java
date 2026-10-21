@@ -16,6 +16,8 @@
 
 package io.fireflysoftware.domain.banking.accounts.web.controllers;
 
+import io.fireflysoftware.core.banking.accounts.sdk.model.AccountStatementDTO;
+import io.fireflysoftware.core.banking.accounts.sdk.model.ServicingMandateDTO;
 import io.fireflysoftware.domain.banking.accounts.core.records.AccountRecordRequests;
 import io.fireflysoftware.domain.banking.accounts.core.records.AccountRecordService;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -45,9 +47,8 @@ public class AccountRecordsController {
     }
 
     @GetMapping("/accounts/{accountId}/statements/{statementId}")
-    public Mono<AccountRecordRequests.RecordedId> statement(@PathVariable UUID accountId, @PathVariable UUID statementId) {
-        return records.statement(accountId, statementId)
-                .map(row -> new AccountRecordRequests.RecordedId(row.getAccountStatementId()));
+    public Mono<AccountRecordRequests.StatementView> statement(@PathVariable UUID accountId, @PathVariable UUID statementId) {
+        return records.statement(accountId, statementId).map(AccountRecordsController::statementView);
     }
 
     @PostMapping("/accounts/{accountId}/limits")
@@ -66,5 +67,32 @@ public class AccountRecordsController {
     public Mono<AccountRecordRequests.RecordedId> servicingMandate(@PathVariable UUID accountId,
                                                                     @RequestBody AccountRecordRequests.ServicingMandate body) {
         return records.createServicingMandate(accountId, body).map(AccountRecordRequests.RecordedId::new);
+    }
+
+    @GetMapping("/accounts/{accountId}/servicing-mandates/{mandateId}")
+    public Mono<AccountRecordRequests.MandateView> servicingMandate(@PathVariable UUID accountId,
+                                                                     @PathVariable UUID mandateId) {
+        return records.servicingMandate(accountId, mandateId)
+                .map(row -> mandateView(accountId, row));
+    }
+
+    private static AccountRecordRequests.StatementView statementView(AccountStatementDTO row) {
+        return new AccountRecordRequests.StatementView(
+                row.getAccountStatementId(),
+                row.getCurrency(),
+                row.getOpeningBalance(),
+                row.getLineAmounts(),
+                row.getCredits(),
+                row.getDebits(),
+                row.getClosingBalance());
+    }
+
+    private static AccountRecordRequests.MandateView mandateView(UUID accountId, ServicingMandateDTO row) {
+        return new AccountRecordRequests.MandateView(
+                row.getServicingMandateId(),
+                row.getAccountId() == null ? accountId : row.getAccountId(),
+                row.getPartyId(),
+                row.getRole() == null ? null : row.getRole().getValue(),
+                Boolean.TRUE.equals(row.getActive()));
     }
 }

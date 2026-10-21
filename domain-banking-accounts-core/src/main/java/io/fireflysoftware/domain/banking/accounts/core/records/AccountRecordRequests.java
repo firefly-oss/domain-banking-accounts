@@ -38,6 +38,13 @@ public final class AccountRecordRequests {
     public record ServicingMandate(UUID partyId, String role, Boolean active) {
     }
 
+    public record StatementView(UUID id, String currency, BigDecimal openingBalance, List<BigDecimal> lineAmounts,
+                                BigDecimal credits, BigDecimal debits, BigDecimal closingBalance) {
+    }
+
+    public record MandateView(UUID id, UUID accountId, UUID partyId, String role, boolean active) {
+    }
+
     public record RecordedId(UUID id) {
     }
 }
