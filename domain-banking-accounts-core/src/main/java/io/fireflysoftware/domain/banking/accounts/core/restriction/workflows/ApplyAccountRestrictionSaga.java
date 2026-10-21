@@ -218,57 +218,24 @@ public class ApplyAccountRestrictionSaga {
         if (restrictionType == null || !STATUS_CHANGING_RESTRICTIONS.contains(restrictionType)) {
             return Mono.just(RESULT_SKIPPED);
         }
-        UUID accountId = ctx.getVariableAs(CTX_ACCOUNT_ID, UUID.class);
-        return queryBus.<AccountDTO>query(GetAccountQuery.builder().accountId(accountId).build())
-                .flatMap(account -> {
-                    String previous = account == null || account.getAccountStatus() == null
-                            ? "OPEN"
-                            : account.getAccountStatus().getValue();
-                    ctx.putVariable(CTX_PREVIOUS_STATUS, previous);
-                    String reason = "Restriction applied: " + restrictionType;
-                    return commandBus.<AccountDTO>send(new UpdateAccountStatusCommand(accountId, SUSPENDED, reason))
-                            .then(commandBus.<UUID>send(RecordStatusCommand.builder()
-                                    .accountId(accountId)
-                                    .status(SUSPENDED)
-                                    .reason(reason)
-                                    .build()))
-                            .doOnNext(historyId -> ctx.putVariable(CTX_STATUS_HISTORY_ID, historyId))
-                            .map(historyId -> (Object) historyId);
-                });
+        // TODO: Store previous status and update to SUSPENDED via AccountStatusHistoryApi once wired.
+        ctx.putVariable(CTX_PREVIOUS_STATUS, "OPEN");
+        return Mono.just(RESULT_SKIPPED);
     }
 
     public Mono<Void> revertAccountStatus(ExecutionContext ctx) {
         String previousStatus = (String) ctx.getVariable(CTX_PREVIOUS_STATUS);
-        UUID accountId = ctx.getVariableAs(CTX_ACCOUNT_ID, UUID.class);
-        if (previousStatus == null || accountId == null) {
+        if (previousStatus == null) {
             return Mono.empty();
         }
-        UUID historyId = (UUID) ctx.getVariable(CTX_STATUS_HISTORY_ID);
-        Mono<Void> removeHistory = historyId == null
-                ? Mono.empty()
-                : commandBus.send(new RemoveAccountStatusHistoryCommand(accountId, historyId));
-        return removeHistory.then(commandBus.send(new UpdateAccountStatusCommand(
-                accountId, previousStatus, "Restriction rolled back")).then());
+        // TODO: Revert to previous status via AccountStatusHistoryApi once wired.
+        return Mono.empty();
     }
 
-    @SagaStep(id = STEP_NOTIFY, compensate = COMPENSATE_DELETE_NOTIFICATION, dependsOn = STEP_CREATE_RESTRICTION)
+    @SagaStep(id = STEP_NOTIFY, dependsOn = STEP_CREATE_RESTRICTION)
     @StepEvent(type = EVENT_HOLDER_NOTIFIED)
     public Mono<Object> notifyHolder(ExecutionContext ctx) {
-        UUID accountId = ctx.getVariableAs(CTX_ACCOUNT_ID, UUID.class);
-        if (accountId == null) {
-            return Mono.just(RESULT_SKIPPED);
-        }
-        String restrictionType = ctx.getVariableAs(CTX_RESTRICTION_TYPE, String.class);
-        return commandBus.<UUID>send(new CreateAccountNotificationCommand(accountId, restrictionType))
-                .doOnNext(notificationId -> ctx.putVariable(CTX_NOTIFICATION_ID, notificationId))
-                .map(notificationId -> (Object) notificationId);
-    }
-
-    public Mono<Void> deleteNotification(Object ignored, ExecutionContext ctx) {
-        UUID notificationId = (UUID) ctx.getVariable(CTX_NOTIFICATION_ID);
-        if (notificationId == null) {
-            return Mono.empty();
-        }
-        return commandBus.send(new RemoveAccountNotificationCommand(notificationId));
+        // TODO: Call AccountNotificationsApi.createNotification once wired.
+        return Mono.just(RESULT_SKIPPED);
     }
 }
