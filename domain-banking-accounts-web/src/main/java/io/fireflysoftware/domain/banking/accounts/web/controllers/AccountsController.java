@@ -44,8 +44,8 @@ public class AccountsController {
     public Mono<ResponseEntity<OpenAccountResponse>> openAccount(@Valid @RequestBody OpenAccountCommand command) {
         return accountService.openAccount(command)
                 .map(result -> {
-                    UUID accountId = result.resultOf("create-account", UUID.class).orElse(null);
-                    UUID contractId = result.resultOf("create-contract", UUID.class).orElse(null);
+                    UUID accountId = result.resultOf("createAccount", UUID.class).orElse(null);
+                    UUID contractId = result.resultOf("createContract", UUID.class).orElse(null);
                     return ResponseEntity.ok(OpenAccountResponse.builder()
                             .accountId(accountId)
                             .contractId(contractId)

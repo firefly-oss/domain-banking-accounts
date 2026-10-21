@@ -17,8 +17,10 @@
 
 package io.fireflysoftware.domain.banking.accounts.core.account.commands;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.fireflyframework.cqrs.command.Command;
 
 import java.math.BigDecimal;
@@ -27,6 +29,8 @@ import java.util.UUID;
 
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class OpenAccountCommand implements Command<UUID> {
 
     private UUID partyId;
@@ -41,6 +45,8 @@ public class OpenAccountCommand implements Command<UUID> {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class AccountParameter {
         private String parameterType;
         private String parameterValue;
