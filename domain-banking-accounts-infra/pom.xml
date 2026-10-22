@@ -26,6 +26,18 @@
             <groupId>io.fireflysoftware</groupId>
             <artifactId>core-banking-ledger-sdk</artifactId>
         </dependency>
+        <dependency>
+            <groupId>io.fireflysoftware</groupId>
+            <artifactId>core-common-customer-mgmt-sdk</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.fireflysoftware</groupId>
+            <artifactId>core-common-product-mgmt-sdk</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.fireflysoftware</groupId>
+            <artifactId>core-common-kycb-mgmt-sdk</artifactId>
+        </dependency>
 
         <!-- Framework -->
         <dependency>

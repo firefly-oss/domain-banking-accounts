@@ -52,6 +52,12 @@ api-configuration:
   core-common:
     contracts:
       base-path: ${ENDPOINT_CORE_CONTRACT_MGMT:http://localhost:8082}
+    customer:
+      base-path: ${ENDPOINT_CORE_CUSTOMER_MGMT:http://localhost:8084}
+    product:
+      base-path: ${ENDPOINT_CORE_PRODUCT_MGMT:http://localhost:8086}
+    kyc:
+      base-path: ${ENDPOINT_CORE_KYC_MGMT:http://localhost:8087}
   core-platform:
     banking-ledger:
       base-path: ${ENDPOINT_CORE_BANKING_LEDGER:http://localhost:8083}

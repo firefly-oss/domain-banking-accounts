@@ -178,6 +178,64 @@ paths:
       responses:
         "200":
           description: OK
+  /api/v1/accounts/opening/eligibility:
+    post:
+      tags:
+      - Accounts
+      summary: Record account-opening eligibility
+      description: Checks the party and product through their cores and stores the
+        KYC verification that records the result.
+      operationId: recordEligibility
+      parameters:
+      - name: X-Idempotency-Key
+        in: header
+        description: "Unique key for idempotent requests. If provided, ensures that\
+          \ identical requests with the same key will only be processed once."
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EligibilityRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/EligibilityDecision"
+  /api/v1/accounts/opening/documents:
+    post:
+      tags:
+      - Accounts
+      summary: Record document verification
+      description: Reads the party's KYC documents and stores the verification status
+        on the KYC record.
+      operationId: recordDocumentVerification
+      parameters:
+      - name: X-Idempotency-Key
+        in: header
+        description: "Unique key for idempotent requests. If provided, ensures that\
+          \ identical requests with the same key will only be processed once."
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DocumentVerificationRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DocumentVerificationDecision"
   /api/v1/account-records/accounts/{accountId}/sweeps:
     post:
       tags:
@@ -821,6 +879,42 @@ components:
           type: string
           description: The status of the saga execution
       description: Response after adding an account holder
+    EligibilityRequest:
+      type: object
+      properties:
+        partyId:
+          type: string
+          format: uuid
+        productId:
+          type: string
+          format: uuid
+    EligibilityDecision:
+      type: object
+      properties:
+        verificationId:
+          type: string
+          format: uuid
+        eligible:
+          type: boolean
+        status:
+          type: string
+        partyId:
+          type: string
+          format: uuid
+    DocumentVerificationRequest:
+      type: object
+      properties:
+        partyId:
+          type: string
+          format: uuid
+    DocumentVerificationDecision:
+      type: object
+      properties:
+        verificationId:
+          type: string
+          format: uuid
+        status:
+          type: string
     SpaceSweep:
       type: object
       properties:

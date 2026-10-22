@@ -20,6 +20,9 @@ package io.fireflysoftware.domain.banking.accounts.web.controllers;
 import io.fireflysoftware.domain.banking.accounts.core.account.commands.CloseAccountCommand;
 import io.fireflysoftware.domain.banking.accounts.core.account.commands.OpenAccountCommand;
 import io.fireflysoftware.domain.banking.accounts.core.account.services.AccountService;
+import io.fireflysoftware.domain.banking.accounts.core.opening.AccountOpeningCheckService;
+import io.fireflysoftware.domain.banking.accounts.core.opening.DocumentVerificationDecision;
+import io.fireflysoftware.domain.banking.accounts.core.opening.EligibilityDecision;
 import io.fireflysoftware.domain.banking.accounts.interfaces.dtos.OpenAccountResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -38,6 +41,7 @@ import java.util.UUID;
 public class AccountsController {
 
     private final AccountService accountService;
+    private final AccountOpeningCheckService accountOpeningCheckService;
 
     @PostMapping
     @Operation(summary = "Open a new account", description = "Opens a new bank account with contract, party, balance, and space setup")
@@ -66,5 +70,28 @@ public class AccountsController {
                 .build();
         return accountService.closeAccount(command)
                 .thenReturn(ResponseEntity.noContent().build());
+    }
+
+    @PostMapping("/opening/eligibility")
+    @Operation(summary = "Record account-opening eligibility",
+            description = "Checks the party and product through their cores and stores the KYC verification that records the result.")
+    public Mono<ResponseEntity<EligibilityDecision>> recordEligibility(@Valid @RequestBody EligibilityRequest request) {
+        return accountOpeningCheckService.recordEligibility(request.partyId(), request.productId())
+                .map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/opening/documents")
+    @Operation(summary = "Record document verification",
+            description = "Reads the party's KYC documents and stores the verification status on the KYC record.")
+    public Mono<ResponseEntity<DocumentVerificationDecision>> recordDocumentVerification(
+            @Valid @RequestBody DocumentVerificationRequest request) {
+        return accountOpeningCheckService.recordDocumentVerification(request.partyId())
+                .map(ResponseEntity::ok);
+    }
+
+    public record EligibilityRequest(UUID partyId, UUID productId) {
+    }
+
+    public record DocumentVerificationRequest(UUID partyId) {
     }
 }
